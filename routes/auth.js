@@ -1,17 +1,22 @@
 const router = require("express").Router();
 const { check, validationResult } = require("express-validator");
+const { users } = require("../db");
 
 router.post(
   "/signup",
   [
-    check("email").isEmail(),
-    check("password").isLength({
+    check("email", "Please provide a valid email").isEmail(),
+    check(
+      "password",
+      "Please provide a password that is greater than 5 characters"
+    ).isLength({
       min: 6,
     }),
   ],
   (req, res) => {
+    console.log(users);
     const { password, email } = req.body;
-    // console.log(password, email);
+    // validated the input
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
@@ -19,7 +24,20 @@ router.post(
         errors: errors.array(),
       });
     }
-    res.send("Validation pass");
+    // validate if user doesnt already exist
+    let user = users.find((user) => {
+      return user.email === email;
+    });
+    if (user) {
+      res.status(401).json({
+        errors: [
+          {
+            msg: "This user already exists",
+          },
+        ],
+      });
+    }
+    res.send("Validation passed");
   }
 );
 
