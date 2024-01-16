@@ -1,6 +1,8 @@
 const router = require("express").Router();
 const { check, validationResult } = require("express-validator");
 const { users } = require("../db");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 router.post(
   "/signup",
@@ -13,7 +15,7 @@ router.post(
       min: 6,
     }),
   ],
-  (req, res) => {
+  async (req, res) => {
     console.log(users);
     const { password, email } = req.body;
     // validated the input
@@ -29,7 +31,7 @@ router.post(
       return user.email === email;
     });
     if (user) {
-      res.status(401).json({
+      return res.status(401).json({
         errors: [
           {
             msg: "This user already exists",
@@ -37,8 +39,62 @@ router.post(
         ],
       });
     }
-    res.send("Validation passed");
+    const hashedPasword = await bcrypt.hash(password, 10);
+    users.push({
+      email: email,
+      password: hashedPasword,
+    });
+
+    const token = jwt.sign(
+      {
+        email: email,
+      },
+      "sdasdasdasdasdasgjigjigji",
+      {
+        expiresIn: 3600000,
+      }
+    );
+    res.json({ token });
   }
 );
 
+router.post("/login", async (req, res) => {
+  const { password, email } = req.body;
+  let user = users.find((user) => {
+    return user.email === email;
+  });
+  if (!user) {
+    return res.status(401).json({
+      errors: [
+        {
+          msg: "Invalid credetnitals",
+        },
+      ],
+    });
+  }
+  let isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return res.status(401).json({
+      errors: [
+        {
+          msg: "Invalid credetnitals",
+        },
+      ],
+    });
+  }
+  const token = jwt.sign(
+    {
+      email: email,
+    },
+    "sdasdasdasdasdasgjigjigji",
+    {
+      expiresIn: 3600000,
+    }
+  );
+  res.json({ token });
+});
+
+router.get("/all", (req, res) => {
+  res.status(200).json(users);
+});
 module.exports = router;
